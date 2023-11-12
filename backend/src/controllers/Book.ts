@@ -29,8 +29,6 @@ export const GetBookById = async (req: Request, res: Response<ServerResponse<Get
 
 export const CreateBook = async (req: Request<CreateBookType>, res: Response<ServerResponse<CreateBookType>>) => {
 
-    console.log(req.body)
-
     try {
 
         const BookExists = await QueryBookByAttr(req.body.title, req.body.author);
