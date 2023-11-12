@@ -29,9 +29,12 @@ export const GetBookById = async (req: Request, res: Response<ServerResponse<Get
 
 export const CreateBook = async (req: Request<CreateBookType>, res: Response<ServerResponse<CreateBookType>>) => {
 
+    console.log(req.body)
+
     try {
 
         const BookExists = await QueryBookByAttr(req.body.title, req.body.author);
+
         if (BookExists) {
             res.status(409).json({ status: 409, message: 'Book already exists.' })
         }

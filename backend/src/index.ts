@@ -5,6 +5,7 @@ import cors from 'cors';
 export const app: Express = express();
 const port = 3000;
 
+app.use(express.json());
 
 app.use(cors({
     origin: 'http://localhost:5173'
