@@ -1,88 +1,84 @@
-import  {useState, useEffect} from 'react';
-import Book from "./components/Book.tsx";
-import Modal from "./components/Modal.tsx";
-import {useForm} from "react-hook-form";
+import {useEffect, useRef, useCallback} from "react";
+import Canvas from "./components/Canvas.tsx";
+import Navbar from "./components/Navbar.tsx";
+import {useStateValue} from "./components/StateProvider.tsx";
 
 function App() {
-    const [books, setBooks] = useState([]);
-    const [showModal, setShowModal] = useState(false);
 
-    const fetchBooks = async () => {
-        try {
-            const response = await fetch('http://localhost:3000/books/all');
-            const data = await response.json();
-            setBooks(data.data);
-        } catch (error) {
-            console.error('Error:', error);
+
+    const [state] = useStateValue();
+    const clickedButton = state.clickedButton;
+
+
+    const boxRef = useRef<HTMLElement | null>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const isClicked = useRef<boolean>(false);
+
+    const coords = useRef({
+        startX: 0,
+        startY: 0,
+        lastX: 0,
+        lastY: 0
+    });
+
+    const onMouseDown = useCallback((e: MouseEvent) => {
+        if (clickedButton !== 'hand') return;
+
+        isClicked.current = true;
+        coords.current.startX = e.clientX
+        coords.current.startY = e.clientY
+    }, [clickedButton]);
+
+
+    const onMouseUp = useCallback((e: MouseEvent) => {
+        isClicked.current = false;
+        if (boxRef.current) {
+            coords.current.lastX = boxRef.current.offsetLeft;
+            coords.current.lastY = boxRef.current.offsetTop;
         }
-    };
-
-    useEffect(() => {
-        fetchBooks();
     }, []);
 
-    const {
-        register,
-        handleSubmit,
+    const onMouseMove = useCallback((e: MouseEvent) => {
+        if (!isClicked.current || !boxRef.current) return;
 
-    } = useForm();
-    
-    
-    const closeModal = () => {
-        setShowModal(false);
-    }
+        const nextX = e.clientX - coords.current.startX + coords.current.lastX;
+        const nextY = e.clientY - coords.current.startY + coords.current.lastY;
 
-    const openModal = () => {
-        setShowModal(true);
-    }
+        boxRef.current.style.left = `${nextX}px`;
+        boxRef.current.style.top = `${nextY}px`;
+    }, []);
 
-    const onSubmit = (data) => {
-        console.log(data)
-        fetch('http://localhost:3000/books', {
-            method: 'POST',
-            body: JSON.stringify(data),
-            headers: {
-                'Content-Type': 'application/json'
-            },
-        })
-        .then(response => response.json())
-        .then(() => {
-            fetchBooks();
-            closeModal();
-        })
-        .catch((error) => {
-            console.error('Error:', error);
-        });
-    }
+    useEffect(() => {
+        const box = boxRef.current;
+        const container = containerRef.current;
+
+        if (!box || !container) return;
+
+        box.addEventListener('mousedown', onMouseDown);
+        box.addEventListener('mouseup', onMouseUp);
+        container.addEventListener('mousemove', onMouseMove);
+        container.addEventListener('mouseleave', onMouseUp);
+
+        return () => {
+            box.removeEventListener('mousedown', onMouseDown);
+            box.removeEventListener('mouseup', onMouseUp);
+            container.removeEventListener('mousemove', onMouseMove);
+            container.removeEventListener('mouseleave', onMouseUp);
+        };
+    }, [onMouseDown, onMouseUp, onMouseMove]);
+
 
     return (
         <>
-
-            <Modal onClose={closeModal} show={showModal}>
-
-                <div className={'flex flex-col items-center justify-center'}>
-                    <h3 className={'m-5 font-bold text-xl'}>add book</h3>
-                    <form className={'flex flex-col items-center justify-center'} onSubmit={handleSubmit(onSubmit)}>
-                        <label htmlFor={"title"}>title</label>
-                        <input className={'border border-black'} defaultValue={""} type="text" {...register("title")}/>
-                        <label htmlFor={"author"}>author</label>
-                        <input className={'border border-black'} defaultValue={""} type="text" {...register("author")}/>
-                        <button className={'text-white bg-blue-600 rounded-full px-3 py-1 m-4'} type={"submit"}>submit</button>
-                    </form>
-                </div>
-
-            </Modal>
-
-            <h1 className={'text-2xl font-bold text-center'}>Books</h1>
-
-            <nav className={'w-full h-20 flex  items-center justify-center border border-b-black'}>
-                <button className={'border border-black'} onClick={openModal}> add</button>
-            </nav>
-
-            {books.map((book: any) => (
-                <Book data={book} key={book.id} fetchBooks={fetchBooks}/>
-            ))}
-
+            <Navbar/>
+            <main ref={containerRef} className={'h-full w-full flex justify-center items-center'}>
+                <Canvas
+                    ref={boxRef}
+                    width={5000}
+                    height={5000}
+                    className={'absolute top-0 left-0 border border-black'}
+                />
+            </main>
         </>
     );
 }
